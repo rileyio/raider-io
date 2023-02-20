@@ -2,23 +2,30 @@
  * @name raider-io
  * @pluginURL https://raw.githubusercontent.com/rileyio/raider-io/master/plugin.ts
  * @repo rileyio/raider-io
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import * as moment from 'moment'
 
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ColorResolvable, EmbedBuilder, Message, SlashCommandBuilder } from 'discord.js'
+import { RouteConfiguration, Routed } from '../../src/router'
+import { fetchSeasonCutoffs, getMythicPlusScorePlacement } from './mythic-plus'
 
 import { CharacterProfile } from './character'
 import { Plugin } from '../../src/objects/plugin'
-import { RoutedInteraction } from '../../src/router/index'
 import axios from 'axios'
 
-const Covenant = {
-  Kyrian: '<:Kyrian:1008063029830746254>',
-  Necrolord: '<:Necrolord:1008063031168729098>',
-  Nightfae: '<:Nightfae:1008063031944691772>',
-  Venthyr: '<:Venthyr:1008063033051975680>'
+// const Covenant = {
+//   Kyrian: '<:Kyrian:1008063029830746254>',
+//   Necrolord: '<:Necrolord:1008063031168729098>',
+//   Nightfae: '<:Nightfae:1008063031944691772>',
+//   Venthyr: '<:Venthyr:1008063033051975680>'
+// }
+
+const GroupRole = {
+  DPS: '<:dps:1077246366599884870>',
+  Healer: '<:healer:1077246367631675532>',
+  Tank: '<:tank:1077246369783349309>'
 }
 
 export class RaiderIOPlugin extends Plugin {
@@ -30,69 +37,67 @@ export class RaiderIOPlugin extends Plugin {
   }
 
   public async onEnabled() {
-    await this.bot.Router.addRoute({
-      category: 'Plugin',
-      controller: this.routeCommand,
-      name: 'rio',
-      permissions: {
-        defaultEnabled: false,
-        serverOnly: false
-      },
-      plugin: this,
-      slash: new SlashCommandBuilder()
-        .setName('rio')
-        .setDescription('Raider.io')
-        // * Character Profile
-        .addSubcommand((subcommand) =>
-          subcommand
-            .setName('character-profile')
-            .setDescription('Lookup Gear, Guild, Covenant, M+ and Raid Progression')
-            .addStringOption((option) =>
-              option
-                .setName('region')
-                .setDescription('Region')
-                .setRequired(true)
-                .setChoices({ name: 'US', value: 'us' }, { name: 'EU', value: 'eu' }, { name: 'TW', value: 'tw' }, { name: 'KR', value: 'kr' }, { name: 'CN', value: 'cn' })
-            )
-            .addStringOption((option) => option.setName('realm').setDescription('Server/Realm (Example: area-52)').setRequired(true))
-            .addStringOption((option) => option.setName('name').setDescription('Character Name').setRequired(true))
-        ),
-      type: 'interaction'
-    })
+    await this.bot.Router.addRoute(
+      new RouteConfiguration({
+        category: 'Plugin',
+        controller: this.routeCommand,
+        name: 'rio',
+        permissions: {
+          defaultEnabled: false,
+          serverOnly: false
+        },
+        plugin: this,
+        slash: new SlashCommandBuilder()
+          .setName('rio')
+          .setDescription('Raider.io')
+          // * Character Profile
+          .addSubcommand((subcommand) =>
+            subcommand
+              .setName('character-profile')
+              .setDescription('Lookup Gear, Guild, Covenant, M+ and Raid Progression')
+              .addStringOption((option) =>
+                option
+                  .setName('region')
+                  .setDescription('Region')
+                  .setRequired(true)
+                  .setChoices({ name: 'US', value: 'us' }, { name: 'EU', value: 'eu' }, { name: 'TW', value: 'tw' }, { name: 'KR', value: 'kr' }, { name: 'CN', value: 'cn' })
+              )
+              .addStringOption((option) => option.setName('realm').setDescription('Server/Realm (Example: area-52)').setRequired(true))
+              .addStringOption((option) => option.setName('name').setDescription('Character Name').setRequired(true))
+          ),
+        type: 'discord-chat-interaction'
+      })
+    )
   }
 
   public async onDisabled() {
     await this.bot.Router.removeRoute('rio')
   }
 
-  public async fetchCharacterProfile(plugin: RaiderIOPlugin, routed: RoutedInteraction) {
+  public async fetchCharacterProfile(plugin: RaiderIOPlugin, routed: Routed<'discord-chat-interaction'>) {
     const region = routed.interaction.options.get('region')?.value as string
     const realm = routed.interaction.options.get('realm')?.value as string
     const name = routed.interaction.options.get('name')?.value as string
-    let url = `${plugin.config.baseURL}/characters/profile?region=${region}&realm=${realm}&name=${name}&fields=`
-    url += 'gear,'
-    url += 'guild,'
-    url += 'covenant,'
-    url += 'raid_progression,'
-    url += 'raid_achievement_curve:castle-nathria:sanctum-of-domination:sepulcher-of-the-first-ones,'
-    url += 'mythic_plus_scores_by_season:season-sl-4:season-sl-3:season-sl-2:season-sl-1'
+    let charURL = `${plugin.config.baseURL}/characters/profile?region=${region}&realm=${realm}&name=${name}&fields=`
+    charURL += 'gear,'
+    charURL += 'guild,'
+    charURL += 'covenant,'
+    charURL += 'raid_progression,'
+    charURL += 'raid_achievement_curve:castle-nathria:sanctum-of-domination:sepulcher-of-the-first-ones:vault-of-the-incarnates,'
+    charURL += 'mythic_plus_scores_by_season:season-df-1:season-sl-4:season-sl-3:season-sl-2:season-sl-1'
 
-    console.log(encodeURI(url))
+    console.log('Character URL:', encodeURI(charURL))
 
     try {
-      const { data } = await axios.get<CharacterProfile>(encodeURI(url))
+      await routed.interaction.deferReply({ ephemeral: true })
+      const { data } = await axios.get<CharacterProfile>(encodeURI(charURL))
 
-      // Successful
-      const title = `${Covenant[data.covenant.name]} ${data.name} :: ${data.class} - (${data.region}) ${data.realm}`
+      // Build Embed
+      const title = `${data.name} :: ${data.class} - (${data.region}) ${data.realm}`
       const color = data.faction === 'alliance' ? 19091 : 9180694
       const characterLastUpdated = moment(data.last_crawled_at).fromNow()
-      // let description = `` //`**Mythic Plus Score** \`(${data.mythic_plus_scores.all}\``
 
-      // // Add M+ Scores Breakdown
-      // if (data.mythic_plus_scores.tank) description += `\n- Tank \`${data.mythic_plus_scores.tank}\``
-      // if (data.mythic_plus_scores.dps) description += `\n- DPS \`${data.mythic_plus_scores.dps}\``
-      // if (data.mythic_plus_scores.healer) description += `\n- Healer \`${data.mythic_plus_scores.healer}\``
-
+      // Gear from API
       const { head, neck, shoulder, back, chest, waist, shirt, wrist, hands, legs, feet, finger1, finger2, trinket1, trinket2, mainhand, offhand } = data.gear.items
 
       // Add Gear Listing
@@ -127,85 +132,93 @@ export class RaiderIOPlugin extends Plugin {
         : null
       offhand ? (gear += `\n\`${offhand.item_level}\` **OH** ${offhand.tier ? '`T`' : ''} ${offhand.name} ${offhand.gems.length ? '💎' : ''} ${offhand.enchant ? '✨' : ''}`) : null
 
-      gear += `\n\n T Is Tier Gear`
+      gear += `\n\n \`T\` Is Tier Gear`
       gear += `\n 💎 Has Gem`
       gear += `\n ✨ Has Enchant`
 
+      // Mythic Plus
       let mPlus = ''
       const sls1 = data.mythic_plus_scores_by_season.find((s) => s.season === 'season-sl-1')
       const sls2 = data.mythic_plus_scores_by_season.find((s) => s.season === 'season-sl-2')
       const sls3 = data.mythic_plus_scores_by_season.find((s) => s.season === 'season-sl-3')
       const sls4 = data.mythic_plus_scores_by_season.find((s) => s.season === 'season-sl-4')
+      const dfs1 = data.mythic_plus_scores_by_season.find((s) => s.season === 'season-df-1')
+      const seasonCutoffs = await fetchSeasonCutoffs(this.config.baseURL, region)
+      const dfs1MythicPlusScorePlacement = seasonCutoffs && dfs1 ? getMythicPlusScorePlacement(seasonCutoffs, dfs1.scores.all) : null
+
+      // TODO: Create cache to not spam these old seasons constantly
+      const sls4MythicPlusScorePlacement = false
+      const sls3MythicPlusScorePlacement = false
+      //const sls4MythicPlusScorePlacement = seasonCutoffs && sls4 ? getMythicPlusScorePlacement(seasonCutoffs, sls4.scores.all) : null
+      //const sls3MythicPlusScorePlacement = seasonCutoffs && sls3 ? getMythicPlusScorePlacement(seasonCutoffs, sls3.scores.all) : null
+
+      // Dragonflight Scores
+      if (dfs1) {
+        if (dfs1MythicPlusScorePlacement) mPlus += `**DF S1** \`${dfs1.scores.all}\` | **${dfs1MythicPlusScorePlacement}**\n`
+        else mPlus += `**DF S1** \`${dfs1.scores.all}\` | **${dfs1MythicPlusScorePlacement}**\n`
+        // Role Scores
+        if (dfs1.scores.tank) mPlus += `${GroupRole.Tank} \`${dfs1.scores.tank}\``
+        if (dfs1.scores.healer) mPlus += ` ${GroupRole.Healer} \`${dfs1.scores.healer}\``
+        if (dfs1.scores.dps) mPlus += ` ${GroupRole.DPS} \`${dfs1.scores.dps}\``
+      }
+
+      // Shadowlands Scores
+      if (sls1 || sls2 || sls3 || sls4) mPlus += `\n\n**==== Shadowlands ====**`
 
       if (sls4) {
-        mPlus += `**SL S4** \`${sls4.scores.all}\``
-        if (sls4.scores.tank) mPlus += `\n- Tank \`${sls4.scores.tank}\``
-        if (sls4.scores.healer) mPlus += `\n- Healer \`${sls4.scores.healer}\``
-        if (sls4.scores.dps) mPlus += `\n- DPS \`${sls4.scores.dps}\``
+        if (sls4MythicPlusScorePlacement) mPlus += `\n\n**SL S4** \`${sls4.scores.all}\ | **${sls4MythicPlusScorePlacement}**\n`
+        else mPlus += `\n\n**SL S4** \`${sls4.scores.all}\`\n`
+        // Role Scores
+        if (sls4.scores.tank) mPlus += `${GroupRole.Tank} \`${sls4.scores.tank}\``
+        if (sls4.scores.healer) mPlus += ` ${GroupRole.Healer} \`${sls4.scores.healer}\``
+        if (sls4.scores.dps) mPlus += ` ${GroupRole.DPS} \`${sls4.scores.dps}\``
       }
       if (sls3) {
-        mPlus += `\n\n**SL S3** \`${sls3.scores.all}\``
-        if (sls3.scores.tank) mPlus += `\n- Tank \`${sls3.scores.tank}\``
-        if (sls3.scores.healer) mPlus += `\n- Healer \`${sls3.scores.healer}\``
-        if (sls3.scores.dps) mPlus += `\n- DPS \`${sls3.scores.dps}\``
+        if (sls3MythicPlusScorePlacement) mPlus += `\n\n**SL S3** \`${sls3.scores.all}\` | **${sls3MythicPlusScorePlacement}**\n`
+        else mPlus += `\n\n**SL S3** \`${sls3.scores.all}\`\n`
+        // Role Scores
+        if (sls3.scores.tank) mPlus += `${GroupRole.Tank} \`${sls3.scores.tank}\``
+        if (sls3.scores.healer) mPlus += ` ${GroupRole.Healer} \`${sls3.scores.healer}\``
+        if (sls3.scores.dps) mPlus += ` ${GroupRole.DPS} \`${sls3.scores.dps}\``
       }
       if (sls2) {
-        mPlus += `\n\n**SL S2** \`${sls2.scores.all}\``
-        if (sls2.scores.tank) mPlus += `\n- Tank \`${sls2.scores.tank}\``
-        if (sls2.scores.healer) mPlus += `\n- Healer \`${sls2.scores.healer}\``
-        if (sls2.scores.dps) mPlus += `\n- DPS \`${sls2.scores.dps}\``
+        mPlus += `\n\n**SL S2** \`${sls2.scores.all}\`\n`
+        // Role Scores
+        if (sls2.scores.tank) mPlus += `${GroupRole.Tank} \`${sls2.scores.tank}\``
+        if (sls2.scores.healer) mPlus += ` ${GroupRole.Healer} \`${sls2.scores.healer}\``
+        if (sls2.scores.dps) mPlus += ` ${GroupRole.DPS} \`${sls2.scores.dps}\``
       }
       if (sls1) {
-        mPlus += `\n\n**SL S1** \`${sls1.scores.all}\``
-        if (sls1.scores.tank) mPlus += `\n- Tank \`${sls1.scores.tank}\``
-        if (sls1.scores.healer) mPlus += `\n- Healer \`${sls1.scores.healer}\``
-        if (sls1.scores.dps) mPlus += `\n- DPS \`${sls1.scores.dps}\``
+        mPlus += `\n\n**SL S1** \`${sls1.scores.all}\`\n`
+        // Role Scores
+        if (sls1.scores.tank) mPlus += `${GroupRole.Tank} \`${sls1.scores.tank}\``
+        if (sls1.scores.healer) mPlus += ` ${GroupRole.Healer} \`${sls1.scores.healer}\``
+        if (sls1.scores.dps) mPlus += ` ${GroupRole.DPS} \`${sls1.scores.dps}\``
       }
+
+      // Page M+ Footer
+      mPlus += '\n\n'
+      mPlus += `[RIO](https://raider.io/characters/${region}/${realm}/${name}) ● `
+      mPlus += `[Armory](https://worldofwarcraft.blizzard.com/en-us/character/${region}/${realm}/${name}) ● `
+      mPlus += `[WCL](https://www.warcraftlogs.com/character/${region}/${realm}/${name})`
+
       // if (data.mythic_plus_scores.dps) description += `\n- DPS \`${data.mythic_plus_scores.dps}\``
       // if (data.mythic_plus_scores.healer) description += `\n- Healer \`${data.mythic_plus_scores.healer}\``
 
       let raid = ''
-      const fcn = data.raid_progression['fated-castle-nathria']
-      const fsod = data.raid_progression['fated-sanctum-of-domination']
-      const fsofo = data.raid_progression['fated-sepulcher-of-the-first-ones']
-      const cn = data.raid_progression['castle-nathria']
-      const sod = data.raid_progression['sanctum-of-domination']
-      const sofo = data.raid_progression['sepulcher-of-the-first-ones']
+      const voi = data.raid_progression['vault-of-the-incarnates']
 
-      const curveCN = data.raid_achievement_curve.find((r) => r.raid === 'castle-nathria')
-      const curveSoD = data.raid_achievement_curve.find((r) => r.raid === 'sanctum-of-domination')
-      const curveSoFO = data.raid_achievement_curve.find((r) => r.raid === 'sepulcher-of-the-first-ones')
+      // const curveCN = data.raid_achievement_curve.find((r) => r.raid === 'castle-nathria')
+      // const curveSoD = data.raid_achievement_curve.find((r) => r.raid === 'sanctum-of-domination')
+      // const curveSoFO = data.raid_achievement_curve.find((r) => r.raid === 'sepulcher-of-the-first-ones')
+      const curveVoI = data.raid_achievement_curve.find((r) => r.raid === 'vault-of-the-incarnates')
 
-      raid += `**\`[Fated]\` Sepulcher of the First Ones**`
-      raid += `\nMythic ${fsofo.mythic_bosses_killed}/${fsofo.total_bosses}`
-      raid += `\nHeroic ${fsofo.heroic_bosses_killed}/${fsofo.total_bosses}`
-      raid += `\nNormal ${fsofo.normal_bosses_killed}/${fsofo.total_bosses}`
-
-      raid += `\n\n**\`[Fated]\` Sanctum of Domination**`
-      raid += `\nMythic ${fsod.mythic_bosses_killed}/${fsod.total_bosses}`
-      raid += `\nHeroic ${fsod.heroic_bosses_killed}/${fsod.total_bosses}`
-      raid += `\nNormal ${fsod.normal_bosses_killed}/${fsod.total_bosses}`
-
-      raid += `\n\n**\`[Fated]\` Castle Nathria**`
-      raid += `\nMythic ${fcn.mythic_bosses_killed}/${fcn.total_bosses}`
-      raid += `\nHeroic ${fcn.heroic_bosses_killed}/${fcn.total_bosses}`
-      raid += `\nNormal ${fcn.normal_bosses_killed}/${fcn.total_bosses}`
-
-      raid += `\n\n**Sepulcher of the First Ones** ${curveSoFO ? (curveSoFO.aotc ? '`[AOTC]`' : '') : ''} ${curveSoFO ? (curveSoFO.cutting_edge ? '`[CE]`' : '') : ''}`
-      raid += `\nMythic ${sofo.mythic_bosses_killed}/${sofo.total_bosses} ${curveSoFO?.cutting_edge ? '`' + (curveSoFO?.cutting_edge).substring(0, 10) + '`' : ''}`
-      raid += `\nHeroic ${sofo.heroic_bosses_killed}/${sofo.total_bosses} ${curveSoFO?.aotc ? '`' + (curveSoFO?.aotc).substring(0, 10) + '`' : ''}`
-      raid += `\nNormal ${sofo.normal_bosses_killed}/${sofo.total_bosses}`
-
-      raid += `\n\n**Sanctum of Domination** ${curveSoD ? (curveSoD.aotc ? '`[AOTC]`' : '') : ''} ${curveSoD ? (curveSoD.cutting_edge ? '`[CE]`' : '') : ''}`
-      raid += `\nMythic ${sod.mythic_bosses_killed}/${sod.total_bosses} ${curveSoD?.cutting_edge ? '`' + (curveSoD?.cutting_edge).substring(0, 10) + '`' : ''}`
-      raid += `\nHeroic ${sod.heroic_bosses_killed}/${sod.total_bosses} ${curveSoD?.aotc ? '`' + (curveSoD?.aotc).substring(0, 10) + '`' : ''}`
-      raid += `\nNormal ${sod.normal_bosses_killed}/${sod.total_bosses}`
-
-      raid += `\n\n**Castle Nathria** ${curveCN ? (curveCN.aotc ? '`[AOTC]`' : '') : ''} ${curveCN ? (curveCN.cutting_edge ? '`[CE]`' : '') : ''}`
-      raid += `\nMythic ${cn.mythic_bosses_killed}/${cn.total_bosses} ${curveCN?.cutting_edge ? '`' + (curveCN?.cutting_edge).substring(0, 10) + '`' : ''}`
-      raid += `\nHeroic ${cn.heroic_bosses_killed}/${cn.total_bosses} ${curveCN?.aotc ? '`' + (curveCN?.aotc).substring(0, 10) + '`' : ''}`
-      raid += `\nNormal ${cn.normal_bosses_killed}/${cn.total_bosses}`
-
+      if (voi) {
+        raid += `\n\n**Vault of the Incarnates** ${curveVoI ? (curveVoI.aotc ? '`[AOTC]`' : '') : ''} ${curveVoI ? (curveVoI.cutting_edge ? '`[CE]`' : '') : ''}`
+        raid += `\nMythic ${voi.mythic_bosses_killed}/${voi.total_bosses} ${curveVoI?.cutting_edge ? '`' + (curveVoI?.cutting_edge).substring(0, 10) + '`' : ''}`
+        raid += `\nHeroic ${voi.heroic_bosses_killed}/${voi.total_bosses} ${curveVoI?.aotc ? '`' + (curveVoI?.aotc).substring(0, 10) + '`' : ''}`
+        raid += `\nNormal ${voi.normal_bosses_killed}/${voi.total_bosses}`
+      }
       // Display options
       const outputOptions = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(new ButtonBuilder().setCustomId('gear').setLabel('Gear').setStyle(ButtonStyle.Secondary))
@@ -226,7 +239,7 @@ export class RaiderIOPlugin extends Plugin {
       // The public message posted
       let publicMsg: Message<boolean>
 
-      const collector = routed.interaction.channel?.createMessageComponentCollector({ time: 5 * (60 * 1000) })
+      const collector = routed.channel?.createMessageComponentCollector({ time: 5 * (60 * 1000) })
       collector?.on('collect', async (i: ButtonInteraction) => {
         // Enable Make Public button now
         completeOptions.components[0].setDisabled(false)
@@ -242,7 +255,7 @@ export class RaiderIOPlugin extends Plugin {
 
         if (i.customId === 'mplus')
           lastMsg = plugin.buttonInteractionReply(color, title, data.thumbnail_url, data.profile_url, characterLastUpdated, routed.routerStats.user, {
-            name: `M+ ${sls4 ? `\`${sls4.scores.all}\`` : ''}`,
+            name: `M+ by Season`,
             value: mPlus
           })
 
@@ -259,7 +272,7 @@ export class RaiderIOPlugin extends Plugin {
             embeds: [new EmbedBuilder().setDescription('Reposted Publicly')]
           })
 
-          if (routed.interaction.channel) publicMsg = await routed.interaction.channel.send({ embeds: [lastMsg] })
+          if (routed.interaction.channel) publicMsg = await routed.channel.send({ embeds: [lastMsg] })
           collector.stop('stopped')
         }
 
@@ -295,13 +308,11 @@ export class RaiderIOPlugin extends Plugin {
       completeOptions.components[0].setDisabled(true)
 
       // First post with button options
-      await routed.reply(
-        {
-          components
-        },
-        true
-      )
+      await routed.interaction.editReply({
+        components
+      })
     } catch (error) {
+      console.log('Error', error)
       if (error.response.status === 400 && error.response.data.message === 'Could not find requested character')
         return await routed.reply('Could not find requested character', true)
       return await routed.reply('Unknown Error', true)
@@ -323,14 +334,14 @@ export class RaiderIOPlugin extends Plugin {
       .setURL(profileURL)
       .setFooter({
         iconURL: 'https://cdn.discordapp.com/app-icons/526039977247899649/41251d23f9bea07f51e895bc3c5c0b6d.png',
-        text: `Last Updated: ${characterLastUpdated} :: Requested By ${requestor} :: Retrieved by Kiera`
+        text: `Last Updated (rio): ${characterLastUpdated} :: Requested By ${requestor} :: Retrieved by Kiera`
       })
       .setTitle(title)
       .setTimestamp(Date.now())
       .addFields(fields)
   }
 
-  public async routeCommand(plugin: RaiderIOPlugin, routed: RoutedInteraction) {
+  public async routeCommand(plugin: RaiderIOPlugin, routed: Routed<'discord-chat-interaction'>) {
     const subCommand = routed.options?.getSubcommand() as 'character-profile'
 
     // Character Lookup
