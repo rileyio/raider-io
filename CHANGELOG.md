@@ -2,6 +2,12 @@
 
 ## 1.1.0
 
+### 🪄 Updates
+
+- Updated: Command category to align with new naming convention.
+
+## 1.1.0
+
 ### 🛠️ Fixes
 - Fixed: Working again with the API changes made for DF.
 

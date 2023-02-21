@@ -2,7 +2,7 @@
  * @name raider-io
  * @pluginURL https://raw.githubusercontent.com/rileyio/raider-io/master/plugin.ts
  * @repo rileyio/raider-io
- * @version 1.1.0
+ * @version 1.1.1
  */
 
 import * as moment from 'moment'
@@ -39,7 +39,7 @@ export class RaiderIOPlugin extends Plugin {
   public async onEnabled() {
     await this.bot.Router.addRoute(
       new RouteConfiguration({
-        category: 'Plugin',
+        category: 'Plugin/Raider.IO',
         controller: this.routeCommand,
         name: 'rio',
         permissions: {
