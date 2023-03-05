@@ -2,7 +2,7 @@
  * @name raider-io
  * @pluginURL https://raw.githubusercontent.com/rileyio/raider-io/master/plugin.ts
  * @repo rileyio/raider-io
- * @version 1.1.1
+ * @version 1.2.0
  */
 
 import * as moment from 'moment'
@@ -30,49 +30,50 @@ const GroupRole = {
 
 export class RaiderIOPlugin extends Plugin {
   config = { baseURL: 'https://raider.io/api/v1' }
+  routes = [
+    new RouteConfiguration({
+      category: 'Plugin/Raider.IO',
+      controller: this.routeCommand,
+      name: 'rio',
+      permissions: {
+        defaultEnabled: false,
+        serverOnly: false
+      },
+      plugin: this,
+      slash: new SlashCommandBuilder()
+        .setName('rio')
+        .setDescription('Raider.io')
+        // * Character Profile
+        .addSubcommand((subcommand) =>
+          subcommand
+            .setName('character-profile')
+            .setDescription('Lookup Gear, Guild, Covenant, M+ and Raid Progression')
+            .addStringOption((option) =>
+              option
+                .setName('region')
+                .setDescription('Region')
+                .setRequired(true)
+                .setChoices({ name: 'US', value: 'us' }, { name: 'EU', value: 'eu' }, { name: 'TW', value: 'tw' }, { name: 'KR', value: 'kr' }, { name: 'CN', value: 'cn' })
+            )
+            .addStringOption((option) => option.setName('realm').setDescription('Server/Realm (Example: area-52)').setRequired(true).setAutocomplete(true))
+            .addStringOption((option) => option.setName('name').setDescription('Character Name').setRequired(true))
+        ),
+      type: 'discord-chat-interaction'
+    })
+  ]
 
   constructor() {
     super()
     this.autoCheckForUpdate = false
   }
 
-  public async onEnabled() {
-    await this.bot.Router.addRoute(
-      new RouteConfiguration({
-        category: 'Plugin/Raider.IO',
-        controller: this.routeCommand,
-        name: 'rio',
-        permissions: {
-          defaultEnabled: false,
-          serverOnly: false
-        },
-        plugin: this,
-        slash: new SlashCommandBuilder()
-          .setName('rio')
-          .setDescription('Raider.io')
-          // * Character Profile
-          .addSubcommand((subcommand) =>
-            subcommand
-              .setName('character-profile')
-              .setDescription('Lookup Gear, Guild, Covenant, M+ and Raid Progression')
-              .addStringOption((option) =>
-                option
-                  .setName('region')
-                  .setDescription('Region')
-                  .setRequired(true)
-                  .setChoices({ name: 'US', value: 'us' }, { name: 'EU', value: 'eu' }, { name: 'TW', value: 'tw' }, { name: 'KR', value: 'kr' }, { name: 'CN', value: 'cn' })
-              )
-              .addStringOption((option) => option.setName('realm').setDescription('Server/Realm (Example: area-52)').setRequired(true))
-              .addStringOption((option) => option.setName('name').setDescription('Character Name').setRequired(true))
-          ),
-        type: 'discord-chat-interaction'
-      })
-    )
-  }
+  // onEnabled = async () => {
+  //   console.log('test')
+  // }
 
-  public async onDisabled() {
-    await this.bot.Router.removeRoute('rio')
-  }
+  // onDisabled = async () => {
+  //   await this.bot.Router.removeRoute('rio')
+  // }
 
   public async fetchCharacterProfile(plugin: RaiderIOPlugin, routed: Routed<'discord-chat-interaction'>) {
     const region = routed.interaction.options.get('region')?.value as string
@@ -278,10 +279,18 @@ export class RaiderIOPlugin extends Plugin {
 
         // When stopped
         if (i.customId === 'end') {
-          await i.update({
-            components: [],
-            embeds: publicMsg ? [] : [lastMsg]
-          })
+          // At least 1 button has been pressed
+          if (lastMsg)
+            await i.update({
+              components: [],
+              embeds: publicMsg ? [] : [lastMsg]
+            })
+          // Condition for when no other buttons are pressed
+          else
+            await i.update({
+              components: [],
+              content: 'Done'
+            })
           collector.stop('stopped')
         }
 

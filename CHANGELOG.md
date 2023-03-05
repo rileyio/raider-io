@@ -1,14 +1,24 @@
 # Change Log
 
-## 1.1.0
+## 1.2.0
+
+### 🛠️ Fixes
+- Fixed: Issue where no other button is pressed and user immediately selects the 'Done' button.
+
+---
+
+## 1.1.1
 
 ### 🪄 Updates
 
 - Updated: Command category to align with new naming convention.
 
+---
+
 ## 1.1.0
 
 ### 🛠️ Fixes
+
 - Fixed: Working again with the API changes made for DF.
 
 ### 🪄 Updates
@@ -27,4 +37,5 @@
 ## 1.0.0
 
 ### Added
+
 - Plugin created.
