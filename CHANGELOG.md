@@ -10,6 +10,7 @@
 - New: Autocomplete for server names.
 - New: DF S2 M+ scores.
 - New: M+ Season Cutoff data cached to speed up responses.
+- New: Aberrus raid added to raid progression.
 
 ### 🗑️ Removed
 - Removed: SL S1 & S2 from M+ score output.

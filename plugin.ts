@@ -223,12 +223,21 @@ export class RaiderIOPlugin extends Plugin {
       // if (data.mythic_plus_scores.healer) description += `\n- Healer \`${data.mythic_plus_scores.healer}\``
 
       let raid = ''
+      const atsc = data.raid_progression['aberrus-the-shadowed-crucible']
       const voi = data.raid_progression['vault-of-the-incarnates']
 
       // const curveCN = data.raid_achievement_curve.find((r) => r.raid === 'castle-nathria')
       // const curveSoD = data.raid_achievement_curve.find((r) => r.raid === 'sanctum-of-domination')
       // const curveSoFO = data.raid_achievement_curve.find((r) => r.raid === 'sepulcher-of-the-first-ones')
+      const curveATSC = data.raid_achievement_curve.find((r) => r.raid === 'aberrus-the-shadowed-crucible')
       const curveVoI = data.raid_achievement_curve.find((r) => r.raid === 'vault-of-the-incarnates')
+
+      if (atsc) {
+        raid += `\n\n**Aberrus the Shadowed Crucible** ${curveATSC ? (curveATSC.aotc ? '`[AOTC]`' : '') : ''} ${curveATSC ? (curveATSC.cutting_edge ? '`[CE]`' : '') : ''}`
+        raid += `\nMythic ${atsc.mythic_bosses_killed}/${atsc.total_bosses} ${curveATSC?.cutting_edge ? '`' + (curveATSC?.cutting_edge).substring(0, 10) + '`' : ''}`
+        raid += `\nHeroic ${atsc.heroic_bosses_killed}/${atsc.total_bosses} ${curveATSC?.aotc ? '`' + (curveATSC?.aotc).substring(0, 10) + '`' : ''}`
+        raid += `\nNormal ${atsc.normal_bosses_killed}/${atsc.total_bosses}`
+      }
 
       if (voi) {
         raid += `\n\n**Vault of the Incarnates** ${curveVoI ? (curveVoI.aotc ? '`[AOTC]`' : '') : ''} ${curveVoI ? (curveVoI.cutting_edge ? '`[CE]`' : '') : ''}`

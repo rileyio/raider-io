@@ -94,7 +94,7 @@ export type CharacterProfileRaidProg = {
 }
 
 export type CharacterProfileRaidCurve = {
-  raid: 'castle-nathria' | 'sanctum-of-domination' | 'sepulcher-of-the-first-ones' | 'vault-of-the-incarnates'
+  raid: 'castle-nathria' | 'sanctum-of-domination' | 'sepulcher-of-the-first-ones' | 'vault-of-the-incarnates' | 'aberrus-the-shadowed-crucible'
   aotc: string
   cutting_edge?: string
 }
