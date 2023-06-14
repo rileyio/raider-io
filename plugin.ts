@@ -2,7 +2,7 @@
  * @name raider-io
  * @pluginURL https://raw.githubusercontent.com/rileyio/raider-io/master/plugin.ts
  * @repo rileyio/raider-io
- * @version 1.2.0
+ * @version 2.0.0
  */
 
 import * as moment from 'moment'
