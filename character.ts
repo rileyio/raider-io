@@ -36,7 +36,7 @@ export type CharacterProfile = {
 }
 
 export type CharacterProfileMPlusScoresBySeason = {
-  season: `season-sl-1` | `season-sl-2` | `season-sl-3` | `season-sl-4` | `season-df-1`
+  season: `season-sl-1` | `season-sl-2` | `season-sl-3` | `season-sl-4` | `season-df-1` | `season-df-2`
   scores: CharacterProfileMPlusScore
   segments: CharacterProfileMPlusSegments
 }

@@ -14,6 +14,7 @@ import { fetchSeasonCutoffs, getMythicPlusScorePlacement } from './mythic-plus'
 import { CharacterProfile } from './character'
 import { Plugin } from '../../src/objects/plugin'
 import axios from 'axios'
+import { realms } from './servers'
 
 // const Covenant = {
 //   Kyrian: '<:Kyrian:1008063029830746254>',
@@ -32,6 +33,11 @@ export class RaiderIOPlugin extends Plugin {
   config = { baseURL: 'https://raider.io/api/v1' }
   routes = [
     new RouteConfiguration({
+      autocomplete: {
+        options: {
+          realm: realms
+        }
+      },
       category: 'Plugin/Raider.IO',
       controller: this.routeCommand,
       name: 'rio',
@@ -55,7 +61,7 @@ export class RaiderIOPlugin extends Plugin {
                 .setRequired(true)
                 .setChoices({ name: 'US', value: 'us' }, { name: 'EU', value: 'eu' }, { name: 'TW', value: 'tw' }, { name: 'KR', value: 'kr' }, { name: 'CN', value: 'cn' })
             )
-            .addStringOption((option) => option.setName('realm').setDescription('Server/Realm (Example: area-52)').setRequired(true).setAutocomplete(true))
+            .addStringOption((option) => option.setName('realm').setDescription('Server/Realm (Example: Area 52)').setRequired(true).setAutocomplete(true))
             .addStringOption((option) => option.setName('name').setDescription('Character Name').setRequired(true))
         ),
       type: 'discord-chat-interaction'
@@ -85,7 +91,7 @@ export class RaiderIOPlugin extends Plugin {
     charURL += 'covenant,'
     charURL += 'raid_progression,'
     charURL += 'raid_achievement_curve:castle-nathria:sanctum-of-domination:sepulcher-of-the-first-ones:vault-of-the-incarnates,'
-    charURL += 'mythic_plus_scores_by_season:season-df-1:season-sl-4:season-sl-3:season-sl-2:season-sl-1'
+    charURL += 'mythic_plus_scores_by_season:season-df-2:season-df-1:season-sl-4:season-sl-3:season-sl-2:season-sl-1'
 
     console.log('Character URL:', encodeURI(charURL))
 
@@ -144,8 +150,10 @@ export class RaiderIOPlugin extends Plugin {
       const sls3 = data.mythic_plus_scores_by_season.find((s) => s.season === 'season-sl-3')
       const sls4 = data.mythic_plus_scores_by_season.find((s) => s.season === 'season-sl-4')
       const dfs1 = data.mythic_plus_scores_by_season.find((s) => s.season === 'season-df-1')
+      const dfs2 = data.mythic_plus_scores_by_season.find((s) => s.season === 'season-df-2')
       const seasonCutoffs = await fetchSeasonCutoffs(this.config.baseURL, region)
-      const dfs1MythicPlusScorePlacement = seasonCutoffs && dfs1 ? getMythicPlusScorePlacement(seasonCutoffs, dfs1.scores.all) : null
+      const dfs1MythicPlusScorePlacement = undefined //seasonCutoffs && dfs1 ? getMythicPlusScorePlacement(seasonCutoffs, dfs1.scores.all) : null
+      const dfs2MythicPlusScorePlacement = seasonCutoffs && dfs2 ? getMythicPlusScorePlacement(seasonCutoffs, dfs2.scores.all) : null
 
       // TODO: Create cache to not spam these old seasons constantly
       const sls4MythicPlusScorePlacement = false
@@ -154,10 +162,18 @@ export class RaiderIOPlugin extends Plugin {
       //const sls3MythicPlusScorePlacement = seasonCutoffs && sls3 ? getMythicPlusScorePlacement(seasonCutoffs, sls3.scores.all) : null
 
       // Dragonflight Scores
-      if (dfs1) {
-        if (dfs1MythicPlusScorePlacement) mPlus += `**DF S1** \`${dfs1.scores.all}\` | **${dfs1MythicPlusScorePlacement}**\n`
-        else mPlus += `**DF S1** \`${dfs1.scores.all}\` | **${dfs1MythicPlusScorePlacement}**\n`
-        // Role Scores
+      if (dfs2.scores.all) {
+        if (dfs2MythicPlusScorePlacement) mPlus += `**DF S2** \`${dfs2.scores.all}\`${dfs2MythicPlusScorePlacement ? ` | **${dfs2MythicPlusScorePlacement}**` : ''}\n`
+        else mPlus += `**DF S2** \`${dfs2.scores.all}\`\n`
+        // Role Scores (s2)
+        if (dfs2.scores.tank) mPlus += `${GroupRole.Tank} \`${dfs2.scores.tank}\``
+        if (dfs2.scores.healer) mPlus += ` ${GroupRole.Healer} \`${dfs2.scores.healer}\``
+        if (dfs2.scores.dps) mPlus += ` ${GroupRole.DPS} \`${dfs2.scores.dps}\``
+      }
+      if (dfs1.scores.all) {
+        if (dfs1MythicPlusScorePlacement) mPlus += `**DF S1** \`${dfs1.scores.all}\`${dfs1MythicPlusScorePlacement ? ` | **${dfs1MythicPlusScorePlacement}**` : ''}\n`
+        else mPlus += `\n\n**DF S1** \`${dfs1.scores.all}\`\n`
+        // Role Scores (s1)
         if (dfs1.scores.tank) mPlus += `${GroupRole.Tank} \`${dfs1.scores.tank}\``
         if (dfs1.scores.healer) mPlus += ` ${GroupRole.Healer} \`${dfs1.scores.healer}\``
         if (dfs1.scores.dps) mPlus += ` ${GroupRole.DPS} \`${dfs1.scores.dps}\``
@@ -166,7 +182,7 @@ export class RaiderIOPlugin extends Plugin {
       // Shadowlands Scores
       if (sls1 || sls2 || sls3 || sls4) mPlus += `\n\n**==== Shadowlands ====**`
 
-      if (sls4) {
+      if (sls4.scores.all) {
         if (sls4MythicPlusScorePlacement) mPlus += `\n\n**SL S4** \`${sls4.scores.all}\ | **${sls4MythicPlusScorePlacement}**\n`
         else mPlus += `\n\n**SL S4** \`${sls4.scores.all}\`\n`
         // Role Scores
@@ -174,7 +190,7 @@ export class RaiderIOPlugin extends Plugin {
         if (sls4.scores.healer) mPlus += ` ${GroupRole.Healer} \`${sls4.scores.healer}\``
         if (sls4.scores.dps) mPlus += ` ${GroupRole.DPS} \`${sls4.scores.dps}\``
       }
-      if (sls3) {
+      if (sls3.scores.all) {
         if (sls3MythicPlusScorePlacement) mPlus += `\n\n**SL S3** \`${sls3.scores.all}\` | **${sls3MythicPlusScorePlacement}**\n`
         else mPlus += `\n\n**SL S3** \`${sls3.scores.all}\`\n`
         // Role Scores
@@ -182,20 +198,20 @@ export class RaiderIOPlugin extends Plugin {
         if (sls3.scores.healer) mPlus += ` ${GroupRole.Healer} \`${sls3.scores.healer}\``
         if (sls3.scores.dps) mPlus += ` ${GroupRole.DPS} \`${sls3.scores.dps}\``
       }
-      if (sls2) {
-        mPlus += `\n\n**SL S2** \`${sls2.scores.all}\`\n`
-        // Role Scores
-        if (sls2.scores.tank) mPlus += `${GroupRole.Tank} \`${sls2.scores.tank}\``
-        if (sls2.scores.healer) mPlus += ` ${GroupRole.Healer} \`${sls2.scores.healer}\``
-        if (sls2.scores.dps) mPlus += ` ${GroupRole.DPS} \`${sls2.scores.dps}\``
-      }
-      if (sls1) {
-        mPlus += `\n\n**SL S1** \`${sls1.scores.all}\`\n`
-        // Role Scores
-        if (sls1.scores.tank) mPlus += `${GroupRole.Tank} \`${sls1.scores.tank}\``
-        if (sls1.scores.healer) mPlus += ` ${GroupRole.Healer} \`${sls1.scores.healer}\``
-        if (sls1.scores.dps) mPlus += ` ${GroupRole.DPS} \`${sls1.scores.dps}\``
-      }
+      // if (sls2.scores.all) {
+      //   mPlus += `\n\n**SL S2** \`${sls2.scores.all}\`\n`
+      //   // Role Scores
+      //   if (sls2.scores.tank) mPlus += `${GroupRole.Tank} \`${sls2.scores.tank}\``
+      //   if (sls2.scores.healer) mPlus += ` ${GroupRole.Healer} \`${sls2.scores.healer}\``
+      //   if (sls2.scores.dps) mPlus += ` ${GroupRole.DPS} \`${sls2.scores.dps}\``
+      // }
+      // if (sls1.scores.all) {
+      //   mPlus += `\n\n**SL S1** \`${sls1.scores.all}\`\n`
+      //   // Role Scores
+      //   if (sls1.scores.tank) mPlus += `${GroupRole.Tank} \`${sls1.scores.tank}\``
+      //   if (sls1.scores.healer) mPlus += ` ${GroupRole.Healer} \`${sls1.scores.healer}\``
+      //   if (sls1.scores.dps) mPlus += ` ${GroupRole.DPS} \`${sls1.scores.dps}\``
+      // }
 
       // Page M+ Footer
       mPlus += '\n\n'
@@ -240,7 +256,10 @@ export class RaiderIOPlugin extends Plugin {
       // The public message posted
       let publicMsg: Message<boolean>
 
-      const collector = routed.channel?.createMessageComponentCollector({ time: 5 * (60 * 1000) })
+      const collector = routed.channel?.createMessageComponentCollector({
+        filter: (i) => i.user.id === routed.interaction.user.id && i.message.interaction.id === routed.interaction.id,
+        time: 5 * (60 * 1000)
+      })
       collector?.on('collect', async (i: ButtonInteraction) => {
         // Enable Make Public button now
         completeOptions.components[0].setDisabled(false)
@@ -306,9 +325,11 @@ export class RaiderIOPlugin extends Plugin {
 
       collector?.on('end', async (collected, reason) => {
         if (reason && reason !== 'stopped') {
-          routed.interaction.editReply({
+          // If there is an embed, update it with the last message
+          await routed.interaction.editReply({
             components: [],
-            embeds: [lastMsg]
+            content: 'Looks like you took too long to respond.',
+            embeds: lastMsg ? [lastMsg] : undefined
           })
         }
       })
@@ -317,7 +338,7 @@ export class RaiderIOPlugin extends Plugin {
       completeOptions.components[0].setDisabled(true)
 
       // First post with button options
-      await routed.interaction.editReply({
+      return await routed.interaction.editReply({
         components
       })
     } catch (error) {

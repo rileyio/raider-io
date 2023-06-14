@@ -1,5 +1,19 @@
 # Change Log
 
+## 2.0.0
+### 🛠️ Fixes
+- Fixed: Issue with replying to multiple pending requests.
+- Fixed: Lookup but no interaction timeout error.
+- Fixed: Multiple lookups from a single user before previous lookup is complete.
+
+### 🌟 Added
+- New: Autocomplete for server names.
+- New: DF S2 M+ scores.
+- New: M+ Season Cutoff data cached to speed up responses.
+
+### 🗑️ Removed
+- Removed: SL S1 & S2 from M+ score output.
+
 ## 1.2.0
 
 ### 🛠️ Fixes
