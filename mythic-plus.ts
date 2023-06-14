@@ -1,3 +1,7 @@
+import * as path from 'path'
+
+import { readFileSync, writeFileSync } from 'fs'
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios'
 
@@ -55,9 +59,18 @@ export type MythicPlusCutoffsTopRatingPercentile = {
 }
 
 export const fetchSeasonCutoffs = async (baseURL: string, region: string) => {
+  // Get last cached time
+  const cached = await readMPlusCutoffCache()
+
+  if (cached) return cached.data
+
   try {
-    const seasonCutoffs = `${baseURL}/mythic-plus/season-cutoffs?season=season-df-1&region=${region}`
+    const seasonCutoffs = `${baseURL}/mythic-plus/season-cutoffs?season=season-df-2&region=${region}`
     const { data } = await axios.get(encodeURI(seasonCutoffs))
+
+    // Cache data to prevent needing to look up again too soon
+    await writeMPlusCutoffCache(data)
+
     return data
   } catch (error) {
     console.error(error)
@@ -71,4 +84,36 @@ export function getMythicPlusScorePlacement(data: MythicPlusCutoffs, score: numb
   if (data.cutoffs.p900.all.quantileMinValue <= score) return 'Top 10%'
   if (data.cutoffs.p750.all.quantileMinValue <= score) return 'Top 25%'
   if (data.cutoffs.p600.all.quantileMinValue <= score) return 'Top 60%'
+}
+
+async function readMPlusCutoffCache(): Promise<{ cached: string; data: MythicPlusCutoffs } | null> {
+  try {
+    const cutoffs = await readFileSync(path.join(__dirname, './cache/season-cutoffs.json'), 'utf8')
+
+    // Check if cache is older than 1 hour
+    if (Date.now() - new Date(JSON.parse(cutoffs).cached).getTime() > 3600000) {
+      console.log('M+ Season Cutoff data IS older than one hour')
+      return null
+    }
+
+    console.log('M+ Season Cutoff data IS NOT older than one hour - reusing cached data')
+    return JSON.parse(cutoffs)
+  } catch (error) {
+    console.warn(error)
+    return null
+  }
+}
+
+async function writeMPlusCutoffCache(data: MythicPlusCutoffs) {
+  try {
+    await writeFileSync(
+      path.join(__dirname, './cache/season-cutoffs.json'),
+      JSON.stringify({
+        cached: new Date(),
+        data
+      })
+    )
+  } catch (error) {
+    console.error(error)
+  }
 }
