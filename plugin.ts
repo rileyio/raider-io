@@ -2,19 +2,18 @@
  * @name raider-io
  * @pluginURL https://raw.githubusercontent.com/rileyio/raider-io/master/plugin.ts
  * @repo rileyio/raider-io
- * @version 1.2.0
+ * @version 2.0.1
  */
 
-import * as moment from 'moment'
-
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ColorResolvable, EmbedBuilder, Message, SlashCommandBuilder } from 'discord.js'
-import { RouteConfiguration, Routed } from '../../src/router'
-import { fetchSeasonCutoffs, getMythicPlusScorePlacement } from './mythic-plus'
+import { RouteConfiguration, Routed } from '../../src/router/index.ts'
+import { fetchSeasonCutoffs, getMythicPlusScorePlacement } from './mythic-plus.ts'
 
-import { CharacterProfile } from './character'
-import { Plugin } from '../../src/objects/plugin'
+import { CharacterProfile } from './character.ts'
+import { Plugin } from '../../src/common/objects/plugin.ts'
 import axios from 'axios'
-import { realms } from './servers'
+import moment from 'moment'
+import { realms } from './servers.ts'
 
 // const Covenant = {
 //   Kyrian: '<:Kyrian:1008063029830746254>',
@@ -90,7 +89,7 @@ export class RaiderIOPlugin extends Plugin {
     charURL += 'guild,'
     charURL += 'covenant,'
     charURL += 'raid_progression,'
-    charURL += 'raid_achievement_curve:castle-nathria:sanctum-of-domination:sepulcher-of-the-first-ones:vault-of-the-incarnates,'
+    charURL += 'raid_achievement_curve:castle-nathria:sanctum-of-domination:sepulcher-of-the-first-ones:vault-of-the-incarnates:aberrus-the-shadowed-crucible,'
     charURL += 'mythic_plus_scores_by_season:season-df-2:season-df-1:season-sl-4:season-sl-3:season-sl-2:season-sl-1'
 
     console.log('Character URL:', encodeURI(charURL))
