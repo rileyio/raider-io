@@ -3,6 +3,7 @@
 ## 2.0.1
 ### 🛠️ Fixes
 - Fixed: ATSC AoTC & CE labels fixed.
+- Fixed: M+ Season Cutoff now cached by region.
 
 
 ## 2.0.0
