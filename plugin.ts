@@ -2,7 +2,7 @@
  * @name raider-io
  * @pluginURL https://raw.githubusercontent.com/rileyio/raider-io/master/plugin.ts
  * @repo rileyio/raider-io
- * @version 2.0.1
+ * @version 2.1.0
  */
 
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ColorResolvable, EmbedBuilder, Message, SlashCommandBuilder } from 'discord.js'
@@ -89,8 +89,9 @@ export class RaiderIOPlugin extends Plugin {
     charURL += 'guild,'
     charURL += 'covenant,'
     charURL += 'raid_progression,'
-    charURL += 'raid_achievement_curve:castle-nathria:sanctum-of-domination:sepulcher-of-the-first-ones:vault-of-the-incarnates:aberrus-the-shadowed-crucible,'
-    charURL += 'mythic_plus_scores_by_season:season-df-2:season-df-1:season-sl-4:season-sl-3:season-sl-2:season-sl-1'
+    charURL +=
+      'raid_achievement_curve:castle-nathria:sanctum-of-domination:sepulcher-of-the-first-ones:vault-of-the-incarnates:aberrus-the-shadowed-crucible:amirdrassil-the-dreams-hope,'
+    charURL += 'mythic_plus_scores_by_season:season-df-3:season-df-2:season-df-1:season-sl-4:season-sl-3'
 
     console.log('Character URL:', encodeURI(charURL))
 
@@ -150,9 +151,11 @@ export class RaiderIOPlugin extends Plugin {
       const sls4 = data.mythic_plus_scores_by_season.find((s) => s.season === 'season-sl-4')
       const dfs1 = data.mythic_plus_scores_by_season.find((s) => s.season === 'season-df-1')
       const dfs2 = data.mythic_plus_scores_by_season.find((s) => s.season === 'season-df-2')
+      const dfs3 = data.mythic_plus_scores_by_season.find((s) => s.season === 'season-df-3')
       const seasonCutoffs = await fetchSeasonCutoffs(this.config.baseURL, region)
       const dfs1MythicPlusScorePlacement = undefined //seasonCutoffs && dfs1 ? getMythicPlusScorePlacement(seasonCutoffs, dfs1.scores.all) : null
-      const dfs2MythicPlusScorePlacement = seasonCutoffs && dfs2 ? getMythicPlusScorePlacement(seasonCutoffs, dfs2.scores.all) : null
+      const dfs2MythicPlusScorePlacement = undefined // seasonCutoffs && dfs2 ? getMythicPlusScorePlacement(seasonCutoffs, dfs2.scores.all) : null
+      const dfs3MythicPlusScorePlacement = seasonCutoffs && dfs3 ? getMythicPlusScorePlacement(seasonCutoffs, dfs3.scores.all) : null
 
       // TODO: Create cache to not spam these old seasons constantly
       const sls4MythicPlusScorePlacement = false
@@ -161,9 +164,17 @@ export class RaiderIOPlugin extends Plugin {
       //const sls3MythicPlusScorePlacement = seasonCutoffs && sls3 ? getMythicPlusScorePlacement(seasonCutoffs, sls3.scores.all) : null
 
       // Dragonflight Scores
+      if (dfs3.scores.all) {
+        if (dfs3MythicPlusScorePlacement) mPlus += `**DF S3** \`${dfs3.scores.all}\`${dfs3MythicPlusScorePlacement ? ` | **${dfs3MythicPlusScorePlacement}**` : ''}\n`
+        else mPlus += `**DF S3** \`${dfs3.scores.all}\`\n`
+        // Role Scores (s2)
+        if (dfs3.scores.tank) mPlus += `${GroupRole.Tank} \`${dfs3.scores.tank}\``
+        if (dfs3.scores.healer) mPlus += ` ${GroupRole.Healer} \`${dfs3.scores.healer}\``
+        if (dfs3.scores.dps) mPlus += ` ${GroupRole.DPS} \`${dfs3.scores.dps}\``
+      }
       if (dfs2.scores.all) {
         if (dfs2MythicPlusScorePlacement) mPlus += `**DF S2** \`${dfs2.scores.all}\`${dfs2MythicPlusScorePlacement ? ` | **${dfs2MythicPlusScorePlacement}**` : ''}\n`
-        else mPlus += `**DF S2** \`${dfs2.scores.all}\`\n`
+        else mPlus += `\n\n**DF S2** \`${dfs2.scores.all}\`\n`
         // Role Scores (s2)
         if (dfs2.scores.tank) mPlus += `${GroupRole.Tank} \`${dfs2.scores.tank}\``
         if (dfs2.scores.healer) mPlus += ` ${GroupRole.Healer} \`${dfs2.scores.healer}\``
@@ -224,12 +235,21 @@ export class RaiderIOPlugin extends Plugin {
       let raid = ''
       const atsc = data.raid_progression['aberrus-the-shadowed-crucible']
       const voi = data.raid_progression['vault-of-the-incarnates']
+      const atdh = data.raid_progression['amirdrassil-the-dreams-hope']
 
       // const curveCN = data.raid_achievement_curve.find((r) => r.raid === 'castle-nathria')
       // const curveSoD = data.raid_achievement_curve.find((r) => r.raid === 'sanctum-of-domination')
       // const curveSoFO = data.raid_achievement_curve.find((r) => r.raid === 'sepulcher-of-the-first-ones')
-      const curveATSC = data.raid_achievement_curve.find((r) => r.raid === 'aberrus-the-shadowed-crucible')
       const curveVoI = data.raid_achievement_curve.find((r) => r.raid === 'vault-of-the-incarnates')
+      const curveATSC = data.raid_achievement_curve.find((r) => r.raid === 'aberrus-the-shadowed-crucible')
+      const curveATDH = data.raid_achievement_curve.find((r) => r.raid === 'amirdrassil-the-dreams-hope')
+
+      if (atdh) {
+        raid += `\n\n**Amirdrassil the Dream's Hope** ${curveATDH ? (curveATDH.aotc ? '`[AOTC]`' : '') : ''} ${curveATDH ? (curveATDH.cutting_edge ? '`[CE]`' : '') : ''}`
+        raid += `\nMythic ${atdh.mythic_bosses_killed}/${atdh.total_bosses} ${curveATDH?.cutting_edge ? '`' + (curveATDH?.cutting_edge).substring(0, 10) + '`' : ''}`
+        raid += `\nHeroic ${atdh.heroic_bosses_killed}/${atdh.total_bosses} ${curveATDH?.aotc ? '`' + (curveATDH?.aotc).substring(0, 10) + '`' : ''}`
+        raid += `\nNormal ${atdh.normal_bosses_killed}/${atdh.total_bosses}`
+      }
 
       if (atsc) {
         raid += `\n\n**Aberrus the Shadowed Crucible** ${curveATSC ? (curveATSC.aotc ? '`[AOTC]`' : '') : ''} ${curveATSC ? (curveATSC.cutting_edge ? '`[CE]`' : '') : ''}`

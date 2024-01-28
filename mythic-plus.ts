@@ -68,7 +68,7 @@ export const fetchSeasonCutoffs = async (baseURL: string, region: string) => {
   if (cached) return cached.data
 
   try {
-    const { data } = await axios.get(encodeURI(`${baseURL}/mythic-plus/season-cutoffs?season=season-df-2&region=${region}`))
+    const { data } = await axios.get(encodeURI(`${baseURL}/mythic-plus/season-cutoffs?season=season-df-3&region=${region}`))
 
     // Cache data to prevent needing to look up again too soon
     writeMPlusCutoffCache(data, region)

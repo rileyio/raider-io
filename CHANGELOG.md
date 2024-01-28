@@ -1,10 +1,14 @@
 # Change Log
 
+## 2.1.0
+### 🌟 Added
+- New: DF S3 M+ scores.
+- New: Amirdrassil the Dream's Hope raid added to raid progression.
+
 ## 2.0.1
 ### 🛠️ Fixes
 - Fixed: ATSC AoTC & CE labels fixed.
 - Fixed: M+ Season Cutoff now cached by region.
-
 
 ## 2.0.0
 ### 🛠️ Fixes
