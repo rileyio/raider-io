@@ -1,4 +1,5 @@
 import * as path from 'path'
+import * as url from 'url'
 
 import { readFileSync, writeFileSync } from 'fs'
 
@@ -58,18 +59,19 @@ export type MythicPlusCutoffsTopRatingPercentile = {
   allColor: string
 }
 
+const __dirname = url.fileURLToPath(new URL('.', import.meta.url))
+
 export const fetchSeasonCutoffs = async (baseURL: string, region: string) => {
   // Get last cached time
-  const cached = await readMPlusCutoffCache()
+  const cached = readMPlusCutoffCache(region)
 
   if (cached) return cached.data
 
   try {
-    const seasonCutoffs = `${baseURL}/mythic-plus/season-cutoffs?season=season-df-2&region=${region}`
-    const { data } = await axios.get(encodeURI(seasonCutoffs))
+    const { data } = await axios.get(encodeURI(`${baseURL}/mythic-plus/season-cutoffs?season=season-df-3&region=${region}`))
 
     // Cache data to prevent needing to look up again too soon
-    await writeMPlusCutoffCache(data)
+    writeMPlusCutoffCache(data, region)
 
     return data
   } catch (error) {
@@ -86,9 +88,9 @@ export function getMythicPlusScorePlacement(data: MythicPlusCutoffs, score: numb
   if (data.cutoffs.p600.all.quantileMinValue <= score) return 'Top 60%'
 }
 
-async function readMPlusCutoffCache(): Promise<{ cached: string; data: MythicPlusCutoffs } | null> {
+function readMPlusCutoffCache(region: string): { cached: string; data: MythicPlusCutoffs } | null {
   try {
-    const cutoffs = await readFileSync(path.join(__dirname, './cache/season-cutoffs.json'), 'utf8')
+    const cutoffs = readFileSync(path.join(__dirname, `./cache/season-${region}-cutoffs.json`), 'utf8')
 
     // Check if cache is older than 1 hour
     if (Date.now() - new Date(JSON.parse(cutoffs).cached).getTime() > 3600000) {
@@ -104,10 +106,10 @@ async function readMPlusCutoffCache(): Promise<{ cached: string; data: MythicPlu
   }
 }
 
-async function writeMPlusCutoffCache(data: MythicPlusCutoffs) {
+function writeMPlusCutoffCache(data: MythicPlusCutoffs, region: string) {
   try {
-    await writeFileSync(
-      path.join(__dirname, './cache/season-cutoffs.json'),
+    writeFileSync(
+      path.join(__dirname, `./cache/season-${region}-cutoffs.json`),
       JSON.stringify({
         cached: new Date(),
         data

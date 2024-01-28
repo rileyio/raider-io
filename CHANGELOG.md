@@ -1,5 +1,15 @@
 # Change Log
 
+## 2.1.0
+### 🌟 Added
+- New: DF S3 M+ scores.
+- New: Amirdrassil the Dream's Hope raid added to raid progression.
+
+## 2.0.1
+### 🛠️ Fixes
+- Fixed: ATSC AoTC & CE labels fixed.
+- Fixed: M+ Season Cutoff now cached by region.
+
 ## 2.0.0
 ### 🛠️ Fixes
 - Fixed: Issue with replying to multiple pending requests.
@@ -20,7 +30,6 @@
 ### 🛠️ Fixes
 - Fixed: Issue where no other button is pressed and user immediately selects the 'Done' button.
 
----
 
 ## 1.1.1
 
@@ -28,7 +37,6 @@
 
 - Updated: Command category to align with new naming convention.
 
----
 
 ## 1.1.0
 
@@ -47,7 +55,6 @@
 - Added: Role icons for M+ scores.
 - Added: Current season top percentile for M+ scores.
 
----
 
 ## 1.0.0
 
