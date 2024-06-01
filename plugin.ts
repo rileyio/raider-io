@@ -6,14 +6,14 @@
  */
 
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, ColorResolvable, EmbedBuilder, Message, SlashCommandBuilder } from 'discord.js'
-import { RouteConfiguration, Routed } from '../../src/router/index.ts'
-import { fetchSeasonCutoffs, getMythicPlusScorePlacement } from './mythic-plus.ts'
+import { RouteConfiguration, Routed } from '../../src/router/index'
+import { fetchSeasonCutoffs, getMythicPlusScorePlacement } from './mythic-plus'
 
-import { CharacterProfile } from './character.ts'
-import { Plugin } from '../../src/common/objects/plugin.ts'
+import { CharacterProfile } from './character'
+import { Plugin } from '../../src/common/objects/plugin'
 import axios from 'axios'
 import moment from 'moment'
-import { realms } from './servers.ts'
+import { realms } from './servers'
 
 // const Covenant = {
 //   Kyrian: '<:Kyrian:1008063029830746254>',
